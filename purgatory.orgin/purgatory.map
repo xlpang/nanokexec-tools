@@ -1,0 +1,525 @@
+
+内存配置
+
+名称           来源             长度             属性
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD purgatory/purgatory.o
+LOAD purgatory/printf.o
+LOAD purgatory/string.o
+LOAD purgatory/arch/x86_64/entry64-32.o
+LOAD purgatory/arch/x86_64/entry64.o
+LOAD purgatory/arch/x86_64/setup-x86_64.o
+LOAD purgatory/arch/x86_64/stack.o
+LOAD purgatory/arch/x86_64/purgatory-x86_64.o
+LOAD purgatory/arch/i386/entry32-16.o
+LOAD purgatory/arch/i386/entry32-16-debug.o
+LOAD purgatory/arch/i386/crashdump_backup.o
+LOAD purgatory/arch/i386/console-x86.o
+LOAD purgatory/arch/i386/vga.o
+LOAD purgatory/arch/i386/pic.o
+LOAD purgatory/sha256.o
+
+.interp
+ *(.interp)
+
+.note.gnu.build-id
+ *(.note.gnu.build-id)
+
+.hash
+ *(.hash)
+
+.gnu.hash
+ *(.gnu.hash)
+
+.dynsym
+ *(.dynsym)
+
+.dynstr
+ *(.dynstr)
+
+.gnu.version
+ *(.gnu.version)
+
+.gnu.version_d
+ *(.gnu.version_d)
+
+.gnu.version_r
+ *(.gnu.version_r)
+
+.rela.init
+ *(.rela.init)
+
+.rela.text
+ *(.rela.text)
+
+.rela.fini
+ *(.rela.fini)
+
+.rela.rodata
+ *(.rela.rodata)
+
+.rela.data.rel.ro
+ *(.rela.data.rel.ro)
+
+.rela.data
+ *(.rela.data)
+
+.rela.tdata
+ *(.rela.tdata)
+
+.rela.tbss
+ *(.rela.tbss)
+
+.rela.ctors
+ *(.rela.ctors)
+
+.rela.dtors
+ *(.rela.dtors)
+
+.rela.got
+ *(.rela.got)
+
+.rela.sharable_data
+ *(.rela.sharable_data)
+
+.rela.sharable_bss
+ *(.rela.sharable_bss)
+
+.rela.bss
+ *(.rela.bss)
+
+.rela.ldata
+ *(.rela.ldata)
+
+.rela.lbss
+ *(.rela.lbss)
+
+.rela.lrodata
+ *(.rela.lrodata)
+
+.rela.ifunc
+ *(.rela.ifunc)
+
+.rela.plt
+ *(.rela.plt)
+
+.init
+ *(SORT(.init))
+
+.plt
+ *(.plt)
+ *(.iplt)
+
+.text           0x0000000000000000     0x4ca5
+ *(.text .stub)
+ .text          0x0000000000000000      0x15f purgatory/purgatory.o
+                0x0000000000000000                verify_sha256_digest
+                0x0000000000000147                purgatory
+ *fill*         0x000000000000015f        0x1 
+ .text          0x0000000000000160      0x3d1 purgatory/printf.o
+                0x0000000000000160                vsprintf
+                0x00000000000003fb                sprintf
+                0x0000000000000491                printf
+ *fill*         0x0000000000000531        0x3 
+ .text          0x0000000000000534       0x60 purgatory/string.o
+                0x0000000000000534                strnlen
+                0x0000000000000547                memset
+                0x000000000000055b                memcpy
+                0x0000000000000573                memcmp
+ *fill*         0x0000000000000594        0xc 
+ .text          0x00000000000005a0       0xc5 purgatory/arch/x86_64/entry64-32.o
+                0x00000000000005a0                entry32
+ *fill*         0x0000000000000665        0xb 
+ .text          0x0000000000000670       0xa6 purgatory/arch/x86_64/entry64.o
+                0x0000000000000670                entry64
+ *fill*         0x0000000000000716        0xa 
+ .text          0x0000000000000720       0x32 purgatory/arch/x86_64/setup-x86_64.o
+                0x0000000000000720                purgatory_start
+ *fill*         0x0000000000000752        0x2 
+ .text          0x0000000000000754        0x0 purgatory/arch/x86_64/stack.o
+ .text          0x0000000000000754       0xad purgatory/arch/x86_64/purgatory-x86_64.o
+                0x0000000000000754                setup_arch
+                0x000000000000078e                x86_setup_jump_back_entry
+                0x00000000000007c6                post_verification_setup_arch
+ *fill*         0x0000000000000801        0xf 
+ .text          0x0000000000000810      0x104 purgatory/arch/i386/entry32-16.o
+                0x0000000000000810                entry16
+                0x00000000000008dc                entry16_regs
+ *fill*         0x0000000000000914        0xc 
+ .text          0x0000000000000920      0x353 purgatory/arch/i386/entry32-16-debug.o
+                0x0000000000000920                entry16_debug
+                0x0000000000000bb4                entry16_debug_regs
+                0x0000000000000bf4                entry16_debug_pre32
+                0x0000000000000c30                entry16_debug_first32
+                0x0000000000000c6d                entry16_debug_old_first32
+ *fill*         0x0000000000000c73        0x1 
+ .text          0x0000000000000c74       0x3e purgatory/arch/i386/crashdump_backup.o
+                0x0000000000000c74                crashdump_backup_memory
+ *fill*         0x0000000000000cb2        0x2 
+ .text          0x0000000000000cb4       0xc9 purgatory/arch/i386/console-x86.o
+                0x0000000000000d5a                putchar
+ *fill*         0x0000000000000d7d        0x3 
+ .text          0x0000000000000d80      0x1fb purgatory/arch/i386/vga.o
+                0x0000000000000d80                x86_reset_vga
+ *fill*         0x0000000000000f7b        0x1 
+ .text          0x0000000000000f7c       0x31 purgatory/arch/i386/pic.o
+                0x0000000000000f7c                x86_setup_legacy_pic
+ *fill*         0x0000000000000fad        0x3 
+ .text          0x0000000000000fb0     0x3cf5 purgatory/sha256.o
+                0x0000000000000fb0                sha256_starts
+                0x0000000000001029                sha256_process
+                0x0000000000004806                sha256_update
+                0x000000000000495a                sha256_finish
+ *(.gnu.warning)
+
+.fini
+ *(SORT(.fini))
+
+.rodata         0x0000000000000000     0x3170
+ *(.rodata)
+ .rodata        0x0000000000000000       0x30 purgatory/arch/x86_64/entry64-32.o
+                0x0000000000000008                entry32_regs
+ .rodata        0x0000000000000030       0xc0 purgatory/arch/x86_64/entry64.o
+                0x0000000000000030                entry64_regs
+ *fill*         0x00000000000000f0      0xf10 
+ .rodata        0x0000000000001000     0x2170 purgatory/arch/x86_64/setup-x86_64.o
+
+.rodata.str1.1  0x0000000000000000       0x8e
+ .rodata.str1.1
+                0x0000000000000000       0x60 purgatory/purgatory.o
+ .rodata.str1.1
+                0x0000000000000060       0x11 purgatory/printf.o
+ .rodata.str1.1
+                0x0000000000000071       0x1d purgatory/arch/x86_64/purgatory-x86_64.o
+
+.rodata1
+ *(.rodata1)
+
+.eh_frame_hdr
+ *(.eh_frame_hdr)
+
+.eh_frame       0x0000000000000000      0x358
+ *(.eh_frame)
+ .eh_frame      0x0000000000000000       0x60 purgatory/purgatory.o
+ .eh_frame      0x0000000000000060       0xa0 purgatory/printf.o
+ .eh_frame      0x0000000000000100       0x68 purgatory/string.o
+ .eh_frame      0x0000000000000168       0x70 purgatory/arch/x86_64/purgatory-x86_64.o
+ .eh_frame      0x00000000000001d8       0x30 purgatory/arch/i386/crashdump_backup.o
+ .eh_frame      0x0000000000000208       0x58 purgatory/arch/i386/console-x86.o
+ .eh_frame      0x0000000000000260       0x30 purgatory/arch/i386/vga.o
+ .eh_frame      0x0000000000000290       0x30 purgatory/arch/i386/pic.o
+ .eh_frame      0x00000000000002c0       0x98 purgatory/sha256.o
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges .exception_ranges*)
+
+.eh_frame
+ *(.eh_frame)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges .exception_ranges*)
+
+.tdata
+ *(.tdata)
+
+.tbss
+ *(.tbss)
+
+.preinit_array
+ *(.preinit_array)
+
+.jcr
+ *(.jcr)
+
+.dynamic
+ *(.dynamic)
+
+.got
+ *(.got)
+ *(.igot)
+
+.got.plt
+ *(.got.plt)
+ *(.igot.plt)
+
+.data           0x0000000000000000     0x20e0
+ *(.data)
+ .data          0x0000000000000000      0x120 purgatory/purgatory.o
+                0x0000000000000000                sha256_digest
+                0x0000000000000020                sha256_regions
+ .data          0x0000000000000120        0x0 purgatory/printf.o
+ .data          0x0000000000000120        0x0 purgatory/string.o
+ .data          0x0000000000000120       0x78 purgatory/arch/x86_64/entry64-32.o
+ .data          0x0000000000000198        0x0 purgatory/arch/x86_64/entry64.o
+ .data          0x0000000000000198        0x0 purgatory/arch/x86_64/setup-x86_64.o
+ *fill*         0x0000000000000198      0xe68 
+ .data          0x0000000000001000     0x1000 purgatory/arch/x86_64/stack.o
+                0x0000000000001000                stack
+                0x0000000000001fe0                stack_arg32_8
+                0x0000000000001fe0                stack_arg64_4
+                0x0000000000001fe4                stack_arg32_7
+                0x0000000000001fe8                stack_arg32_6
+                0x0000000000001fe8                stack_arg64_3
+                0x0000000000001fec                stack_arg32_5
+                0x0000000000001ff0                stack_arg64_2
+                0x0000000000001ff0                stack_arg32_4
+                0x0000000000001ff4                stack_arg32_3
+                0x0000000000001ff8                stack_arg64_1
+                0x0000000000001ff8                stack_arg32_2
+                0x0000000000001ffc                stack_arg32_1
+                0x0000000000002000                stack_end
+ .data          0x0000000000002000       0x13 purgatory/arch/x86_64/purgatory-x86_64.o
+                0x0000000000002000                cmdline_end
+                0x0000000000002008                jump_back_entry
+                0x0000000000002010                panic_kernel
+                0x0000000000002011                legacy_pic
+                0x0000000000002012                reset_vga
+ *fill*         0x0000000000002013        0xd 
+ .data          0x0000000000002020       0x28 purgatory/arch/i386/entry32-16.o
+ *fill*         0x0000000000002048        0x8 
+ .data          0x0000000000002050       0x1e purgatory/arch/i386/entry32-16-debug.o
+ *fill*         0x000000000000206e        0x2 
+ .data          0x0000000000002070       0x18 purgatory/arch/i386/crashdump_backup.o
+                0x0000000000002070                backup_src_size
+                0x0000000000002078                backup_src_start
+                0x0000000000002080                backup_start
+ .data          0x0000000000002088        0xc purgatory/arch/i386/console-x86.o
+                0x000000000000208c                serial_baud
+                0x0000000000002090                serial_base
+                0x0000000000002092                console_serial
+                0x0000000000002093                console_vga
+ .data          0x0000000000002094        0x0 purgatory/arch/i386/vga.o
+ .data          0x0000000000002094        0x0 purgatory/arch/i386/pic.o
+ *fill*         0x0000000000002094        0xc 
+ .data          0x00000000000020a0       0x40 purgatory/sha256.o
+
+.data1
+ *(.data1)
+
+.sharable_data
+ *(.sharable_data)
+
+.bss            0x0000000000000000        0x0
+ *(.dynbss)
+ *(.bss)
+ .bss           0x0000000000000000        0x0 purgatory/purgatory.o
+ .bss           0x0000000000000000        0x0 purgatory/printf.o
+ .bss           0x0000000000000000        0x0 purgatory/string.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/x86_64/entry64-32.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/x86_64/entry64.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/x86_64/setup-x86_64.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/x86_64/stack.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/x86_64/purgatory-x86_64.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/i386/entry32-16.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/i386/entry32-16-debug.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/i386/crashdump_backup.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/i386/console-x86.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/i386/vga.o
+ .bss           0x0000000000000000        0x0 purgatory/arch/i386/pic.o
+ .bss           0x0000000000000000        0x0 purgatory/sha256.o
+ *(COMMON)
+
+.sharable_bss
+ *(.dynsharablebss)
+ *(.sharable_bss)
+ *(SHARABLE_COMMON)
+
+.lbss
+ *(.dynlbss)
+ *(.lbss)
+ *(LARGE_COMMON)
+
+.lrodata
+ *(.lrodata)
+
+.ldata
+ *(.ldata)
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x0000000000000000      0x195
+ *(.comment)
+ .comment       0x0000000000000000       0x2d purgatory/purgatory.o
+ .comment       0x000000000000002d       0x2d purgatory/printf.o
+ .comment       0x000000000000005a       0x2d purgatory/string.o
+ .comment       0x0000000000000087       0x2d purgatory/arch/x86_64/purgatory-x86_64.o
+ .comment       0x00000000000000b4       0x2d purgatory/arch/i386/crashdump_backup.o
+ .comment       0x00000000000000e1       0x2d purgatory/arch/i386/console-x86.o
+ .comment       0x000000000000010e       0x2d purgatory/arch/i386/vga.o
+ .comment       0x000000000000013b       0x2d purgatory/arch/i386/pic.o
+ .comment       0x0000000000000168       0x2d purgatory/sha256.o
+
+.note.GNU-stack
+                0x0000000000000000        0x0
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/purgatory.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/printf.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/string.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/arch/x86_64/purgatory-x86_64.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/arch/i386/crashdump_backup.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/arch/i386/console-x86.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/arch/i386/vga.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/arch/i386/pic.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 purgatory/sha256.o
+
+.note           0x0000000000000000       0x28
+ .note          0x0000000000000000       0x14 purgatory/arch/i386/entry32-16.o
+ .note          0x0000000000000014       0x14 purgatory/arch/i386/entry32-16-debug.o
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges  0x0000000000000000      0x1b0
+ *(.debug_aranges)
+ .debug_aranges
+                0x0000000000000000       0x30 purgatory/purgatory.o
+ .debug_aranges
+                0x0000000000000030       0x30 purgatory/printf.o
+ .debug_aranges
+                0x0000000000000060       0x30 purgatory/string.o
+ .debug_aranges
+                0x0000000000000090       0x30 purgatory/arch/x86_64/purgatory-x86_64.o
+ .debug_aranges
+                0x00000000000000c0       0x30 purgatory/arch/i386/crashdump_backup.o
+ .debug_aranges
+                0x00000000000000f0       0x30 purgatory/arch/i386/console-x86.o
+ .debug_aranges
+                0x0000000000000120       0x30 purgatory/arch/i386/vga.o
+ .debug_aranges
+                0x0000000000000150       0x30 purgatory/arch/i386/pic.o
+ .debug_aranges
+                0x0000000000000180       0x30 purgatory/sha256.o
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info     0x0000000000000000     0x2951
+ *(.debug_info)
+ .debug_info    0x0000000000000000      0x375 purgatory/purgatory.o
+ .debug_info    0x0000000000000375      0x2b6 purgatory/printf.o
+ .debug_info    0x000000000000062b      0x210 purgatory/string.o
+ .debug_info    0x000000000000083b      0x186 purgatory/arch/x86_64/purgatory-x86_64.o
+ .debug_info    0x00000000000009c1      0x106 purgatory/arch/i386/crashdump_backup.o
+ .debug_info    0x0000000000000ac7      0x4db purgatory/arch/i386/console-x86.o
+ .debug_info    0x0000000000000fa2     0x138e purgatory/arch/i386/vga.o
+ .debug_info    0x0000000000002330      0x2f5 purgatory/arch/i386/pic.o
+ .debug_info    0x0000000000002625      0x32c purgatory/sha256.o
+
+.debug_abbrev   0x0000000000000000      0x897
+ *(.debug_abbrev)
+ .debug_abbrev  0x0000000000000000      0x13d purgatory/purgatory.o
+ .debug_abbrev  0x000000000000013d      0x165 purgatory/printf.o
+ .debug_abbrev  0x00000000000002a2       0xe3 purgatory/string.o
+ .debug_abbrev  0x0000000000000385       0xa7 purgatory/arch/x86_64/purgatory-x86_64.o
+ .debug_abbrev  0x000000000000042c       0x93 purgatory/arch/i386/crashdump_backup.o
+ .debug_abbrev  0x00000000000004bf      0x1ac purgatory/arch/i386/console-x86.o
+ .debug_abbrev  0x000000000000066b       0xc0 purgatory/arch/i386/vga.o
+ .debug_abbrev  0x000000000000072b       0x87 purgatory/arch/i386/pic.o
+ .debug_abbrev  0x00000000000007b2       0xe5 purgatory/sha256.o
+
+.debug_line     0x0000000000000000      0xa7f
+ *(.debug_line)
+ .debug_line    0x0000000000000000      0x136 purgatory/purgatory.o
+ .debug_line    0x0000000000000136      0x18e purgatory/printf.o
+ .debug_line    0x00000000000002c4       0xc1 purgatory/string.o
+ .debug_line    0x0000000000000385       0xce purgatory/arch/x86_64/purgatory-x86_64.o
+ .debug_line    0x0000000000000453       0x9b purgatory/arch/i386/crashdump_backup.o
+ .debug_line    0x00000000000004ee      0x18e purgatory/arch/i386/console-x86.o
+ .debug_line    0x000000000000067c       0xf8 purgatory/arch/i386/vga.o
+ .debug_line    0x0000000000000774       0x6c purgatory/arch/i386/pic.o
+ .debug_line    0x00000000000007e0      0x29f purgatory/sha256.o
+
+.debug_frame
+ *(.debug_frame)
+
+.debug_str      0x0000000000000000     0x1122
+ *(.debug_str)
+ .debug_str     0x0000000000000000      0x255 purgatory/purgatory.o
+ .debug_str     0x0000000000000255      0x219 purgatory/printf.o
+ .debug_str     0x000000000000046e      0x16d purgatory/string.o
+ .debug_str     0x00000000000005db      0x20e purgatory/arch/x86_64/purgatory-x86_64.o
+ .debug_str     0x00000000000007e9      0x1d6 purgatory/arch/i386/crashdump_backup.o
+ .debug_str     0x00000000000009bf      0x243 purgatory/arch/i386/console-x86.o
+ .debug_str     0x0000000000000c02      0x15b purgatory/arch/i386/vga.o
+ .debug_str     0x0000000000000d5d      0x15d purgatory/arch/i386/pic.o
+ .debug_str     0x0000000000000eba      0x268 purgatory/sha256.o
+
+.debug_loc      0x0000000000000000      0xe18
+ *(.debug_loc)
+ .debug_loc     0x0000000000000000      0x140 purgatory/purgatory.o
+ .debug_loc     0x0000000000000140      0x54b purgatory/printf.o
+ .debug_loc     0x000000000000068b      0x2f9 purgatory/string.o
+ .debug_loc     0x0000000000000984       0x8f purgatory/arch/i386/crashdump_backup.o
+ .debug_loc     0x0000000000000a13      0x405 purgatory/arch/i386/console-x86.o
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+
+.debug_pubtypes
+ *(.debug_pubtypes)
+
+.debug_ranges   0x0000000000000000      0x130
+ *(.debug_ranges)
+ .debug_ranges  0x0000000000000000       0x60 purgatory/printf.o
+ .debug_ranges  0x0000000000000060       0xd0 purgatory/arch/i386/console-x86.o
+
+.debug_macro
+ *(.debug_macro)
+
+.gnu.attributes
+ *(.gnu.attributes)
+OUTPUT(purgatory/purgatory.ro.sym elf64-x86-64)
