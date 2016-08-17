@@ -376,6 +376,7 @@ static const char *elf64_get_sym_type(Elf64_Sym *sym)
     return "Unknow";
 }
 
+unsigned long
 elf64_get_program_value(const struct elf64_section *section, unsigned long offset, unsigned long size)
 {
 	/* BSS */
