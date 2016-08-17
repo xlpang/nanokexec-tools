@@ -534,6 +534,26 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (kdump_mode) {
+		FILE *file;
+		const char *crashsize_file = "/sys/kernel/kexec_crash_size";
+		char tmpbuf[20];
+		unsigned long crashsize;
+
+		file = fopen(crashsize_file, "r");
+		if (file == NULL) {
+			printf("Can't open /sys/kernel/kexec_crash_size\n");
+			return -1;
+		}
+
+		fgets(tmpbuf, sizeof(tmpbuf), file);
+		fclose(file);
+		crashsize = atol(tmpbuf);
+		if (crashsize == 0) {
+			perror_exit("kdump mode specified, but no reserved memory");
+		}
+	}
+
 	if (reboot_exec) {
 		reboot(LINUX_REBOOT_KEXEC);
 		printf("kexec -e failed! Please load something beforehand.\n");
