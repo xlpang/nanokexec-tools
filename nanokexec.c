@@ -16,6 +16,7 @@
 #include "purgatory.h"
 
 int debug = 0;
+int kdump_mode = 0;
 
 #define dbgprintf(...) \
 do { \
@@ -100,7 +101,7 @@ static int get_current_cmdline(void)
 }
 
 /* Initialize memory_infos[] */
-static int get_memory_info_iomem(void)
+static int get_memory_info_iomem(int kdump)
 {
 	FILE *file;
 	const char *proc_name = "/proc/iomem";
@@ -122,21 +123,42 @@ static int get_memory_info_iomem(void)
 		if (count != 2)
 			continue;
 		desc = tmp + consumed;
-        if (memcmp(desc, "System RAM\n", 11) == 0) {
-            type = MEMINFO_RAM;
-        }
-        else if (memcmp(desc, "reserved\n", 9) == 0) {
-            type = MEMINFO_RESERVED;
-        }
-        else if (memcmp(desc, "ACPI Tables\n", 12) == 0) {
-            type = MEMINFO_ACPI;
-        }
-        else if (memcmp(desc, "ACPI Non-volatile Storage\n", 26) == 0) {
-            type = MEMINFO_ACPI_NVS;
-        } else {
-            continue;
-        }
 
+		if (kdump) {
+			if (memcmp(desc, "Crash kernel\n", 13) == 0) {
+				type = MEMINFO_RAM;
+				goto got_one;
+			} else if (memcmp(desc, "ACPI Tables\n", 12) == 0) {
+				type = MEMINFO_ACPI;
+				goto got_one;
+			} else if (memcmp(desc, "ACPI Non-volatile Storage\n", 26) == 0) {
+				type = MEMINFO_ACPI_NVS;
+				goto got_one;
+			} else if (memcmp(desc, "reserved\n", 9) == 0) {
+				type = MEMINFO_RESERVED;
+				goto got_one;
+			/* Backup the 640KB area for real mode */
+			} else if ((memcmp(desc, "System RAM\n", 11) == 0) && (end <= 0xA0000)) {
+				type = MEMINFO_RAM;
+				goto got_one;
+			} else {
+				continue;
+			}
+		}
+
+		if (memcmp(desc, "System RAM\n", 11) == 0) {
+			type = MEMINFO_RAM;
+		} else if (memcmp(desc, "reserved\n", 9) == 0) {
+			type = MEMINFO_RESERVED;
+		} else if (memcmp(desc, "ACPI Tables\n", 12) == 0) {
+			type = MEMINFO_ACPI;
+		} else if (memcmp(desc, "ACPI Non-volatile Storage\n", 26) == 0) {
+			type = MEMINFO_ACPI_NVS;
+		} else {
+			continue;
+		}
+
+got_one:
 		if (nr_memory_infos == ARRAY_SIZE(memory_infos)) {
 			fclose(file);
 			return -1;
@@ -147,7 +169,7 @@ static int get_memory_info_iomem(void)
 		memory_infos[nr_memory_infos].end = end;
 		memory_infos[nr_memory_infos].type = type;
 		nr_memory_infos++;
-	}
+	} /* while */
 
 	fclose(file);
 
@@ -188,55 +210,57 @@ int load_file(const char *filename, char **retbuf, unsigned long *retlen)
 
 	*retbuf = data;
 	*retlen = s.st_size;
-	//printf("[load_file] address %p\n", *retbuf);
-    close(fd);
+	dbgprintf("[load_file] address %p, size 0x%x\n", *retbuf, ret);
+	close(fd);
 
 	return 0;
 }
 
 static int create_e820_map_from_meminfo(struct x86_linux_bootparam *bootparam, struct e820entry *e820)
 {
-    unsigned short i;
+	unsigned short i;
 
 	/* Regenerate memory_infos[] */
-	if (get_memory_info_iomem() < 0)
+	if (get_memory_info_iomem(kdump_mode) < 0)
 		return -1;
 
-    for (i = 0; i < nr_memory_infos; i++) {
-        e820[i].addr = memory_infos[i].start;
-        e820[i].size = memory_infos[i].end - memory_infos[i].start + 1;
-        switch (memory_infos[i].type) {
-            case MEMINFO_RAM:
-                e820[i].type = E820_RAM;
-                break;
-            case MEMINFO_ACPI:
-                e820[i].type = E820_ACPI;
-                break;
-            case MEMINFO_ACPI_NVS:
-                e820[i].type = E820_NVS;
-                break;
-            default:
-            case MEMINFO_RESERVED:
-                e820[i].type = E820_RESERVED;
-                break;
-        }
+	bootparam->e820_map_nr = nr_memory_infos;
+	for (i = 0; i < nr_memory_infos; i++) {
+		e820[i].addr = memory_infos[i].start;
+		e820[i].size = memory_infos[i].end - memory_infos[i].start + 1;
 
-        //dbgprintf("%016lx-%016lx (%d)\n", e820[i].addr, e820[i].addr+e820[i].size-1, e820[i].type);
+		switch (memory_infos[i].type) {
+		case MEMINFO_RAM:
+			e820[i].type = E820_RAM;
+			break;
+		case MEMINFO_ACPI:
+			e820[i].type = E820_ACPI;
+			break;
+		case MEMINFO_ACPI_NVS:
+			e820[i].type = E820_NVS;
+			break;
+		case MEMINFO_RESERVED:
+			e820[i].type = E820_RESERVED;
+			break;
+		default:
+			break;
+		}
 
-        if (memory_infos[i].type != MEMINFO_RAM)
-            continue;
-        if ((memory_infos[i].start <= 0x100000) && memory_infos[i].end > 0x100000) {
-            unsigned long long mem_k = (memory_infos[i].end >> 10) - (0x100000 >> 10);
-            bootparam->ext_mem_k = mem_k;
-            bootparam->alt_mem_k = mem_k;
-            if (mem_k > 0xfc00) {
-                bootparam->ext_mem_k = 0xfc00; /* 64M */
-            }
-            if (mem_k > 0xffffffff) {
-                bootparam->alt_mem_k = 0xffffffff;
-            }
-        }
-    } /* for */
+		dbgprintf("e820: %016lx-%016lx (%d)\n", e820[i].addr, e820[i].addr+e820[i].size-1, e820[i].type);
+
+		if (memory_infos[i].type != MEMINFO_RAM)
+			continue;
+		if ((memory_infos[i].start <= 0x100000) && memory_infos[i].end > 0x100000) {
+			unsigned long long mem_k = (memory_infos[i].end >> 10) - (0x100000 >> 10);
+
+			bootparam->ext_mem_k = mem_k;
+			bootparam->alt_mem_k = mem_k;
+			if (mem_k > 0xfc00)
+				bootparam->ext_mem_k = 0xfc00; /* 64M */
+			if (mem_k > 0xffffffff)
+				bootparam->alt_mem_k = 0xffffffff;
+		}
+	} /* for */
 
 	return 0;
 }
@@ -244,16 +268,18 @@ static int create_e820_map_from_meminfo(struct x86_linux_bootparam *bootparam, s
 /* A simple implementation */
 char* generate_kexec_segment(const char *buf, unsigned int buf_len, unsigned long mem_hint)
 {
-	unsigned short i;
+	short i;
 	char *mem = NULL;
+	unsigned int orig_len = buf_len;
 
 	/* Align with page */
 	buf_len = (buf_len + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 
 try_again:
-	/* Alloc memory from memory_infos[] */
-	for (i = 0; i < nr_memory_infos; i++) {
+	/* Alloc memory from memory_infos[], from top to down */
+	for (i = nr_memory_infos - 1; i >= 0; i--) {
 		unsigned long target, size;
+		short j;
 
 		if (memory_infos[i].type != MEMINFO_RAM)
 			continue;
@@ -272,8 +298,9 @@ try_again:
 		if (nr_memory_infos == ARRAY_SIZE(memory_infos))
 			break;
 
-		/* Simply use the range including mem_hint */
-		memcpy(memory_infos + i + 1, memory_infos + i, (nr_memory_infos - i) * sizeof(memory_infos[0]));
+		/* Simply use the range including mem_hint, expand memory_infos[] */
+		for (j = 0; j < nr_memory_infos - i; j++)
+			memory_infos[nr_memory_infos-j] = memory_infos[nr_memory_infos-j-1];
 		memory_infos[i].end = target - 1;
 		memory_infos[i+1].start = target + buf_len;
 		nr_memory_infos++;
@@ -297,7 +324,7 @@ try_again:
 	mem = (char *) (((long)mem + PAGE_SIZE -1) & ~(PAGE_SIZE - 1));
 	/* Create new segment using mem */
 	segments[nr_segments].buf = buf;
-	segments[nr_segments].bufsz = buf_len;
+	segments[nr_segments].bufsz = orig_len;
 	segments[nr_segments].mem = mem;
 	segments[nr_segments].memsz = buf_len;
 	nr_segments++;
@@ -320,6 +347,9 @@ int setup_zero_page(const char *kernel, unsigned int kernel_len,
 	struct entry64_regs *regs64;
 	struct elf64_hierarchy hierarchy;
 
+	if (get_memory_info_iomem(kdump_mode) < 0)
+		perror_exit("Parse /proc/iomem failed");
+
 	bootparam = (struct x86_linux_bootparam *)kernel;
 	setup_size = bootparam->setup_sects; /* bootsector is not included */
 	if (setup_size == 0)
@@ -341,19 +371,22 @@ int setup_zero_page(const char *kernel, unsigned int kernel_len,
 	memcpy(realmode + realmode_size, cmdline, cmdline_len);
 
 	/* Please make sure the right kexec segment order here */
-	realmode_kmem = generate_kexec_segment(realmode, realmode_size + cmdline_len, 0x3000);
+	realmode_kmem = generate_kexec_segment(realmode, realmode_size + cmdline_len, 0);
 	if (realmode_kmem == NULL)
 		return -1;
-	purgatory_kmem = generate_kexec_segment(purgatory, purgatory_len, 0x0);
+
+	purgatory_kmem = generate_kexec_segment(purgatory, purgatory_len, 0);
 	if (purgatory_kmem == NULL)
 		return -1;
-	kernel_kmem = generate_kexec_segment(kernel + realmode_size, kernel_len - realmode_size, 0x100000);
-	if (kernel_kmem == NULL)
-		return -1;
+
+	/* Generate initrd before kernel, otherwise kernel decompressing may override initrd data */
 	initrd_kmem = generate_kexec_segment(initrd, initrd_len, 0x10000000);
 	if (initrd_kmem == NULL)
 		return -1;
 
+	kernel_kmem = generate_kexec_segment(kernel + realmode_size, kernel_len - realmode_size, 0x100000);
+	if (kernel_kmem == NULL)
+		return -1;
 	cmdline_kmem = realmode_kmem + realmode_size;
 
 	printf("[kexec mem] realmode: %p, purgatory: %p, kernel: %p, initrd: %p\n",
@@ -366,22 +399,22 @@ int setup_zero_page(const char *kernel, unsigned int kernel_len,
 	bootparam->loader_flags = 0;
 
 	/* Setup ramdisk address and size */
-    bootparam->initrd_start = (unsigned long)initrd_kmem & 0xffffffffUL;
-    bootparam->initrd_size  = initrd_len & 0xffffffffUL;
-    if (bootparam->protocol_version >= 0x020c &&
-        ((unsigned long)initrd_kmem & 0xffffffffUL) != (unsigned long)initrd_kmem)
-        bootparam->ext_ramdisk_image = (unsigned long)initrd_kmem >> 32; 
-    if (bootparam->protocol_version >= 0x020c &&
-        (initrd_len & 0xffffffffUL) != initrd_len)
-        bootparam->ext_ramdisk_size = initrd_len >> 32; 
+	bootparam->initrd_start = (unsigned long)initrd_kmem & 0xffffffffUL;
+	bootparam->initrd_size  = initrd_len & 0xffffffffUL;
+	if (bootparam->protocol_version >= 0x020c &&
+	    ((unsigned long)initrd_kmem & 0xffffffffUL) != (unsigned long)initrd_kmem)
+		bootparam->ext_ramdisk_image = (unsigned long)initrd_kmem >> 32;
+	if (bootparam->protocol_version >= 0x020c &&
+	    (initrd_len & 0xffffffffUL) != initrd_len)
+		bootparam->ext_ramdisk_size = initrd_len >> 32;
 
-    /* Setup command line */
-    if (bootparam->protocol_version >= 0x0202) {
-        bootparam->cmd_line_ptr = (unsigned long)cmdline_kmem & 0xffffffffUL;
-        if ((bootparam->protocol_version >= 0x020c) &&
-            (((unsigned long)cmdline_kmem & 0xffffffffUL) != (unsigned long)cmdline_kmem))
-            bootparam->ext_cmd_line_ptr = (unsigned long)cmdline_kmem >> 32; 
-    }
+	/* Setup command line */
+	if (bootparam->protocol_version >= 0x0202) {
+		bootparam->cmd_line_ptr = (unsigned long)cmdline_kmem & 0xffffffffUL;
+		if ((bootparam->protocol_version >= 0x020c) &&
+		    (((unsigned long)cmdline_kmem & 0xffffffffUL) != (unsigned long)cmdline_kmem))
+		bootparam->ext_cmd_line_ptr = (unsigned long)cmdline_kmem >> 32;
+	}
 
 	/* Setup e820 memory layout */
 	if (create_e820_map_from_meminfo(bootparam, bootparam->e820_map) < 0)
@@ -436,10 +469,12 @@ int setup_zero_page(const char *kernel, unsigned int kernel_len,
 
 #define __NR_kexec_load	246
 #define KEXEC_ARCH_X86_64	(62 << 16)
+#define KEXEC_ON_CRASH      0x00000001
 static inline long kexec_load(void *entry, unsigned long nr_segments,
             struct kexec_segment *segments)
 {
 	unsigned short i;
+	unsigned long flags;
 
 	for (i = 0; i < nr_segments; i++) {
 		dbgprintf("0x%016lx - 0x%x\t->  0x%016lx - 0x%x\n",
@@ -449,7 +484,11 @@ static inline long kexec_load(void *entry, unsigned long nr_segments,
 
 	dbgprintf("Begin to call kexec_load syscall...\n");
 
-    return (long) syscall(__NR_kexec_load, entry, nr_segments, segments, KEXEC_ARCH_X86_64);
+	flags = KEXEC_ARCH_X86_64;
+	if (kdump_mode)
+		flags |= KEXEC_ON_CRASH;
+
+    return (long) syscall(__NR_kexec_load, entry, nr_segments, segments, flags);
 }
 
 void free_resources(void)
@@ -468,8 +507,10 @@ int main(int argc, char *argv[])
 	int has_cmdline = 0, reboot_exec = 0;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "l:i:c:de")) != -1) {
+	while ((opt = getopt(argc, argv, "p:l:i:c:de")) != -1) {
 		switch (opt) {
+		case 'p':
+			kdump_mode = 1;
 		case 'l':
 			kernel_name = optarg;
 			break;
@@ -507,10 +548,6 @@ int main(int argc, char *argv[])
 		perror_exit("get_current_cmdline failed");
 
 	printf("kernel: %s\ninitrd: %s\ncmdline: %s\n", kernel_name, initrd_name, cmdline_buf);
-
-
-	if (get_memory_info_iomem() < 0)
-		perror_exit("Parse /proc/iomem failed");
 
 	if (validate_kernel_bzImage64(kernel_name) < 0)
 		perror_exit("Not a valid bzImage64");
