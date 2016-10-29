@@ -266,14 +266,14 @@ static int create_e820_map_from_meminfo(struct x86_linux_bootparam *bootparam, s
 }
 
 /* A simple implementation */
-char* generate_kexec_segment(const char *buf, unsigned int buf_len, unsigned long mem_hint)
+char* generate_kexec_segment(const char *buf, unsigned int buf_len, unsigned int mem_len, unsigned long mem_hint)
 {
 	short i;
 	char *mem = NULL;
-	unsigned int orig_len = buf_len;
+	unsigned int mem_len_align;
 
 	/* Align with page */
-	buf_len = (buf_len + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+	mem_len_align = (mem_len + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 
 try_again:
 	/* Alloc memory from memory_infos[], from top to down */
@@ -292,7 +292,7 @@ try_again:
 
 		target = (mem_hint != 0) ? mem_hint : memory_infos[i].start;
 		size = memory_infos[i].end + 1 - target;
-		if (size < buf_len + 2*PAGE_SIZE)
+		if (size < mem_len_align + 2*PAGE_SIZE)
 			continue;
 
 		if (nr_memory_infos == ARRAY_SIZE(memory_infos))
@@ -302,7 +302,7 @@ try_again:
 		for (j = 0; j < nr_memory_infos - i; j++)
 			memory_infos[nr_memory_infos-j] = memory_infos[nr_memory_infos-j-1];
 		memory_infos[i].end = target - 1;
-		memory_infos[i+1].start = target + buf_len;
+		memory_infos[i+1].start = target + mem_len_align;
 		nr_memory_infos++;
 		mem = (char *)target;
 		break;
@@ -324,9 +324,9 @@ try_again:
 	mem = (char *) (((long)mem + PAGE_SIZE -1) & ~(PAGE_SIZE - 1));
 	/* Create new segment using mem */
 	segments[nr_segments].buf = buf;
-	segments[nr_segments].bufsz = orig_len;
+	segments[nr_segments].bufsz = buf_len;
 	segments[nr_segments].mem = mem;
-	segments[nr_segments].memsz = buf_len;
+	segments[nr_segments].memsz = mem_len_align;
 	nr_segments++;
 
 	return mem;
@@ -370,24 +370,30 @@ int setup_zero_page(const char *kernel, unsigned int kernel_len,
 	memcpy(realmode, kernel, realmode_size);
 	memcpy(realmode + realmode_size, cmdline, cmdline_len);
 
+	printf("init_size=0x%lx, realmode_size=0x%lx, kernel_len=0x%lx, kernel_alignment=0x%x\n",
+			bootparam->init_size, realmode_size, kernel_len - realmode_size, bootparam->kernel_alignment);
+
 	/* Please make sure the right kexec segment order here */
-	realmode_kmem = generate_kexec_segment(realmode, realmode_size + cmdline_len, 0);
+	realmode_kmem = generate_kexec_segment(realmode, realmode_size + cmdline_len,
+						realmode_size + cmdline_len, 0);
 	if (realmode_kmem == NULL)
 		return -1;
 
-	purgatory_kmem = generate_kexec_segment(purgatory, purgatory_len, 0);
+	cmdline_kmem = realmode_kmem + realmode_size;
+
+	purgatory_kmem = generate_kexec_segment(purgatory, purgatory_len, purgatory_len, 0);
 	if (purgatory_kmem == NULL)
 		return -1;
 
-	/* Generate initrd before kernel, otherwise kernel decompressing may override initrd data */
-	initrd_kmem = generate_kexec_segment(initrd, initrd_len, 0x10000000);
-	if (initrd_kmem == NULL)
-		return -1;
-
-	kernel_kmem = generate_kexec_segment(kernel + realmode_size, kernel_len - realmode_size, 0x100000);
+	/* Must use bootparam->init_size(INIT_SIZE) for kexec memory size, which is max(VO_INIT_SIZE, ZO_INIT_SIZE). */
+	kernel_kmem = generate_kexec_segment(kernel + realmode_size, kernel_len - realmode_size,
+					bootparam->init_size + bootparam->kernel_alignment - 1, 0x1000000);
 	if (kernel_kmem == NULL)
 		return -1;
-	cmdline_kmem = realmode_kmem + realmode_size;
+
+	initrd_kmem = generate_kexec_segment(initrd, initrd_len, initrd_len, 0);
+	if (initrd_kmem == NULL)
+		return -1;
 
 	printf("[kexec mem] realmode: %p, purgatory: %p, kernel: %p, initrd: %p\n",
 			realmode_kmem, purgatory_kmem, kernel_kmem, initrd_kmem);
@@ -482,8 +488,6 @@ static inline long kexec_load(void *entry, unsigned long nr_segments,
 					(unsigned long)segments[i].mem, segments[i].memsz);
 	}
 
-	dbgprintf("Begin to call kexec_load syscall...\n");
-
 	flags = KEXEC_ARCH_X86_64;
 	if (kdump_mode)
 		flags |= KEXEC_ON_CRASH;
@@ -506,6 +510,7 @@ int main(int argc, char *argv[])
 {
 	int has_cmdline = 0, reboot_exec = 0;
 	int opt;
+	int ret;
 
 	while ((opt = getopt(argc, argv, "p:l:i:c:de")) != -1) {
 		switch (opt) {
@@ -591,7 +596,11 @@ int main(int argc, char *argv[])
 		perror_exit("setup zero page failed");
 
 	/* Make kexec syscall */
-	kexec_load(kexec_entry, nr_segments, segments);
+	ret = kexec_load(kexec_entry, nr_segments, segments);
+	if (ret != 0)
+		perror_exit("kexec_load syscall failed");
+	else
+		dbgprintf("kexec_load syscall success.\n");
 
 	free_resources();
 
