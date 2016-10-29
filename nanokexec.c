@@ -279,7 +279,6 @@ try_again:
 	/* Alloc memory from memory_infos[], from top to down */
 	for (i = nr_memory_infos - 1; i >= 0; i--) {
 		unsigned long target, size;
-		short j;
 
 		if (memory_infos[i].type != MEMINFO_RAM)
 			continue;
@@ -299,8 +298,7 @@ try_again:
 			break;
 
 		/* Simply use the range including mem_hint, expand memory_infos[] */
-		for (j = 0; j < nr_memory_infos - i; j++)
-			memory_infos[nr_memory_infos-j] = memory_infos[nr_memory_infos-j-1];
+		memmove(memory_infos + i + 1, memory_infos + i, sizeof(memory_infos[0]) * (nr_memory_infos - i));
 		memory_infos[i].end = target - 1;
 		memory_infos[i+1].start = target + mem_len_align;
 		nr_memory_infos++;
